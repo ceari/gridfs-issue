@@ -1,27 +1,22 @@
-var mongo = require('mongodb');
-var Grid = require('gridfs-locking-stream');
-var restify = require("restify");
+var mongodb = require('mongodb');
+var restify = require('restify');
+var Grid = require('gridfs-stream');
 
 var server = restify.createServer();
 
-var gfs;
+var db = new mongodb.Db('test', new mongodb.Server('localhost', 27017), {w: 0});
 
-server.on('uncaughtException', function(req, res, route, err) {
-  console.log(err.stack);
-})
+// Establish connection to db
+db.open(function(err, db) {
+  if (err) console.log(err);
+  var gfs = Grid(db, mongodb);
 
-server.get('/', function(req, res, next) {
-  gfs.createReadStream({
-    _id: process.argv[2]
-  }, function(err, readStream) {
+  server.get('/', function(req, res, next) {
+    var readStream = gfs.createReadStream({filename: 'blob'});
     readStream.pipe(res);
   });
-});
 
-server.listen(8000, function() {
-    var db = new mongo.Db('mydb', new mongo.Server("127.0.0.1", 27017), {w: -1});
-    db.open(function() {
-      gfs = Grid(db, mongo);
-      console.log("Listening...");
-    });
+  server.listen(8000, function() {
+    console.log('Listening ...');
+  });
 });
